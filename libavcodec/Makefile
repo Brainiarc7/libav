@@ -249,7 +249,7 @@ OBJS-$(CONFIG_H263_DECODER)            += h263dec.o h263.o ituh263dec.o        \
                                           intelh263dec.o h263data.o
 OBJS-$(CONFIG_H263_ENCODER)            += mpeg4videoenc.o mpeg4video.o  \
                                           h263.o ituh263enc.o flvenc.o h263data.o
-OBJS-$(CONFIG_H264_DECODER)            += h264.o h264_cabac.o h264_cavlc.o \
+OBJS-$(CONFIG_H264_DECODER)            += h264dec.o h264_cabac.o h264_cavlc.o \
                                           h264_direct.o h264_loopfilter.o  \
                                           h264_mb.o h264_picture.o h264_ps.o \
                                           h264_refs.o h264_sei.o \
@@ -298,6 +298,7 @@ OBJS-$(CONFIG_LJPEG_ENCODER)           += ljpegenc.o mjpegenc_common.o
 OBJS-$(CONFIG_LOCO_DECODER)            += loco.o
 OBJS-$(CONFIG_MACE3_DECODER)           += mace.o
 OBJS-$(CONFIG_MACE6_DECODER)           += mace.o
+OBJS-$(CONFIG_MAGICYUV_DECODER)        += magicyuv.o
 OBJS-$(CONFIG_MDEC_DECODER)            += mdec.o mpeg12.o mpeg12data.o
 OBJS-$(CONFIG_METASOUND_DECODER)       += metasound.o metasound_data.o \
                                           twinvq.o
@@ -437,6 +438,7 @@ OBJS-$(CONFIG_TIFF_ENCODER)            += tiffenc.o rle.o lzwenc.o
 OBJS-$(CONFIG_TMV_DECODER)             += tmv.o cga_data.o
 OBJS-$(CONFIG_TRUEMOTION1_DECODER)     += truemotion1.o
 OBJS-$(CONFIG_TRUEMOTION2_DECODER)     += truemotion2.o
+OBJS-$(CONFIG_TRUEMOTION2RT_DECODER)   += truemotion2rt.o
 OBJS-$(CONFIG_TRUESPEECH_DECODER)      += truespeech.o
 OBJS-$(CONFIG_TSCC_DECODER)            += tscc.o msrledec.o
 OBJS-$(CONFIG_TSCC2_DECODER)           += tscc2.o

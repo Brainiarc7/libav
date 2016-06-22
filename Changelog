@@ -57,6 +57,9 @@ version <next>:
 - Generic OpenMAX IL encoder with support for Raspberry Pi
 - MMAL-accelerated MPEG-2 and VC-1 decoding
 - G.729 raw demuxer
+- MagicYUV decoder
+- Duck TrueMotion 2.0 Real Time decoder
+- Intel QSV video scaling filter
 
 
 version 11:

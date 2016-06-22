@@ -191,6 +191,7 @@ void avcodec_register_all(void)
     REGISTER_DECODER(LAGARITH,          lagarith);
     REGISTER_ENCODER(LJPEG,             ljpeg);
     REGISTER_DECODER(LOCO,              loco);
+    REGISTER_DECODER(MAGICYUV,          magicyuv);
     REGISTER_DECODER(MDEC,              mdec);
     REGISTER_DECODER(MIMIC,             mimic);
     REGISTER_ENCDEC (MJPEG,             mjpeg);
@@ -264,6 +265,7 @@ void avcodec_register_all(void)
     REGISTER_DECODER(TMV,               tmv);
     REGISTER_DECODER(TRUEMOTION1,       truemotion1);
     REGISTER_DECODER(TRUEMOTION2,       truemotion2);
+    REGISTER_DECODER(TRUEMOTION2RT,     truemotion2rt);
     REGISTER_DECODER(TSCC,              tscc);
     REGISTER_DECODER(TSCC2,             tscc2);
     REGISTER_DECODER(TXD,               txd);

@@ -20,8 +20,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "h264.h"
+#include "h264dec.h"
 #include "h264data.h"
+#include "h264_ps.h"
 #include "mpegutils.h"
 
 // The headers above may include w32threads.h, which uses the original
@@ -165,7 +166,6 @@ static void fill_picture_parameters(const AVCodecContext *avctx, AVDXVAContext *
 static void fill_scaling_lists(const AVCodecContext *avctx, AVDXVAContext *ctx, const H264Context *h, DXVA_Qmatrix_H264 *qm)
 {
     unsigned i, j;
-    const SPS *sps = h->ps.sps;
     const PPS *pps = h->ps.pps;
     memset(qm, 0, sizeof(*qm));
     if (DXVA_CONTEXT_WORKAROUND(avctx, ctx) & FF_DXVA2_WORKAROUND_SCALING_LIST_ZIGZAG) {

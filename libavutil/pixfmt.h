@@ -299,6 +299,8 @@ enum AVColorPrimaries {
     AVCOL_PRI_FILM        = 8, ///< colour filters using Illuminant C
     AVCOL_PRI_BT2020      = 9, ///< ITU-R BT2020
     AVCOL_PRI_SMPTEST428_1 = 10, ///< SMPTE ST 428-1 (CIE 1931 XYZ)
+    AVCOL_PRI_SMPTE431    = 11, ///< SMPTE ST 431-2 (2011)
+    AVCOL_PRI_SMPTE432    = 12, ///< SMPTE ST 432-1 D65 (2010)
     AVCOL_PRI_NB,              ///< Not part of ABI
 };
 
@@ -324,6 +326,7 @@ enum AVColorTransferCharacteristic {
     AVCOL_TRC_BT2020_12    = 15, ///< ITU-R BT2020 for 12-bit system
     AVCOL_TRC_SMPTEST2084  = 16, ///< SMPTE ST 2084 for 10-, 12-, 14- and 16-bit systems
     AVCOL_TRC_SMPTEST428_1 = 17, ///< SMPTE ST 428-1
+    AVCOL_TRC_ARIB_STD_B67 = 18, ///< ARIB STD-B67, known as "Hybrid log-gamma"
     AVCOL_TRC_NB,                ///< Not part of ABI
 };
 
@@ -342,6 +345,7 @@ enum AVColorSpace {
     AVCOL_SPC_YCOCG       = 8,  ///< Used by Dirac / VC-2 and H.264 FRext, see ITU-T SG16
     AVCOL_SPC_BT2020_NCL  = 9,  ///< ITU-R BT2020 non-constant luminance system
     AVCOL_SPC_BT2020_CL   = 10, ///< ITU-R BT2020 constant luminance system
+    AVCOL_SPC_SMPTE2085   = 11, ///< SMPTE 2085, Y'D'zD'x
     AVCOL_SPC_NB,               ///< Not part of ABI
 };
 

@@ -389,6 +389,8 @@ enum AVCodecID {
     AV_CODEC_ID_DXV,
     AV_CODEC_ID_SCREENPRESSO,
     AV_CODEC_ID_RSCC,
+    AV_CODEC_ID_MAGICYUV,
+    AV_CODEC_ID_TRUEMOTION2RT,
 
     /* various PCM "codecs" */
     AV_CODEC_ID_FIRST_AUDIO = 0x10000,     ///< A dummy id pointing at the start of audio codecs
@@ -1187,6 +1189,14 @@ typedef struct AVCPBProperties {
  */
 enum AVPacketSideDataType {
     AV_PKT_DATA_PALETTE,
+
+    /**
+     * The AV_PKT_DATA_NEW_EXTRADATA is used to notify the codec or the format
+     * that the extradata buffer was changed and the receiving side should
+     * act upon it appropriately. The new extradata is embedded in the side
+     * data buffer and should be immediately used for processing the current
+     * frame or packet.
+     */
     AV_PKT_DATA_NEW_EXTRADATA,
 
     /**
@@ -2905,8 +2915,10 @@ typedef struct AVCodecContext {
 #define FF_PROFILE_H264_HIGH                 100
 #define FF_PROFILE_H264_HIGH_10              110
 #define FF_PROFILE_H264_HIGH_10_INTRA        (110|FF_PROFILE_H264_INTRA)
+#define FF_PROFILE_H264_MULTIVIEW_HIGH       118
 #define FF_PROFILE_H264_HIGH_422             122
 #define FF_PROFILE_H264_HIGH_422_INTRA       (122|FF_PROFILE_H264_INTRA)
+#define FF_PROFILE_H264_STEREO_HIGH          128
 #define FF_PROFILE_H264_HIGH_444             144
 #define FF_PROFILE_H264_HIGH_444_PREDICTIVE  244
 #define FF_PROFILE_H264_HIGH_444_INTRA       (244|FF_PROFILE_H264_INTRA)
@@ -3066,15 +3078,25 @@ typedef struct AVCodecContext {
     int            nb_coded_side_data;
 
     /**
-     * Encoding only.
+     * A reference to the AVHWFramesContext describing the input (for encoding)
+     * or output (decoding) frames. The reference is set by the caller and
+     * afterwards owned (and freed) by libavcodec.
      *
-     * For hardware encoders configured to use a hwaccel pixel format, this
-     * field should be set by the caller to a reference to the AVHWFramesContext
-     * describing input frames. AVHWFramesContext.format must be equal to
-     * AVCodecContext.pix_fmt.
+     * - decoding: This field should be set by the caller from the get_format()
+     *             callback. The previous reference (if any) will always be
+     *             unreffed by libavcodec before the get_format() call.
      *
-     * This field should be set before avcodec_open2() is called and is
-     * afterwards owned and managed by libavcodec.
+     *             If the default get_buffer2() is used with a hwaccel pixel
+     *             format, then this AVHWFramesContext will be used for
+     *             allocating the frame buffers.
+     *
+     * - encoding: For hardware encoders configured to use a hwaccel pixel
+     *             format, this field should be set by the caller to a reference
+     *             to the AVHWFramesContext describing input frames.
+     *             AVHWFramesContext.format must be equal to
+     *             AVCodecContext.pix_fmt.
+     *
+     *             This field should be set before avcodec_open2() is called.
      */
     AVBufferRef *hw_frames_ctx;
 } AVCodecContext;

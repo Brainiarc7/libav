@@ -31,12 +31,14 @@
 #include "internal.h"
 #include "mathops.h"
 #include "avcodec.h"
-#include "h264.h"
 #include "h264data.h"
+#include "h264_ps.h"
 #include "golomb.h"
 
 #define MAX_LOG2_MAX_FRAME_NUM    (12 + 4)
 #define MIN_LOG2_MAX_FRAME_NUM    4
+
+#define EXTENDED_SAR       255
 
 static const AVRational pixel_aspect[17] = {
     {   0,  1 },
@@ -429,8 +431,7 @@ int ff_h264_decode_seq_parameter_set(GetBitContext *gb, AVCodecContext *avctx,
     }
 
     sps->ref_frame_count = get_ue_golomb_31(gb);
-    if (sps->ref_frame_count > H264_MAX_PICTURE_COUNT - 2 ||
-        sps->ref_frame_count >= 32U) {
+    if (sps->ref_frame_count > MAX_DELAYED_PIC_COUNT) {
         av_log(avctx, AV_LOG_ERROR,
                "too many reference frames %d\n", sps->ref_frame_count);
         goto fail;
@@ -530,7 +531,8 @@ int ff_h264_decode_seq_parameter_set(GetBitContext *gb, AVCodecContext *avctx,
 
     /* if the maximum delay is not stored in the SPS, derive it based on the
      * level */
-    if (!sps->bitstream_restriction_flag) {
+    if (!sps->bitstream_restriction_flag &&
+        (sps->ref_frame_count || avctx->strict_std_compliance >= FF_COMPLIANCE_STRICT)) {
         sps->num_reorder_frames = MAX_DELAYED_PIC_COUNT - 1;
         for (i = 0; i < FF_ARRAY_ELEMS(level_max_dpb_mbs); i++) {
             if (level_max_dpb_mbs[i][0] == sps->level_idc) {

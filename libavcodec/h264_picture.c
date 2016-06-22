@@ -33,7 +33,7 @@
 #include "cabac_functions.h"
 #include "error_resilience.h"
 #include "avcodec.h"
-#include "h264.h"
+#include "h264dec.h"
 #include "h264data.h"
 #include "h264chroma.h"
 #include "h264_mvpred.h"
@@ -154,7 +154,7 @@ int ff_h264_field_end(H264Context *h, H264SliceContext *sl, int in_setup)
 
     if (in_setup || !(avctx->active_thread_type & FF_THREAD_FRAME)) {
         if (!h->droppable) {
-            err = ff_h264_execute_ref_pic_marking(h, h->mmco, h->mmco_index);
+            err = ff_h264_execute_ref_pic_marking(h);
             h->poc.prev_poc_msb = h->poc.poc_msb;
             h->poc.prev_poc_lsb = h->poc.poc_lsb;
         }

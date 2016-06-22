@@ -513,6 +513,9 @@ int avcodec_default_get_buffer2(AVCodecContext *avctx, AVFrame *frame, int flags
 {
     int ret;
 
+    if (avctx->hw_frames_ctx)
+        return av_hwframe_get_buffer(avctx->hw_frames_ctx, frame, 0);
+
     if ((ret = update_frame_pool(avctx, frame)) < 0)
         return ret;
 
@@ -548,11 +551,21 @@ int ff_decode_frame_props(AVCodecContext *avctx, AVFrame *frame)
 
     frame->reordered_opaque = avctx->reordered_opaque;
     if (!pkt) {
+#if FF_API_PKT_PTS
+FF_DISABLE_DEPRECATION_WARNINGS
         frame->pkt_pts = AV_NOPTS_VALUE;
+FF_ENABLE_DEPRECATION_WARNINGS
+#endif
+        frame->pts     = AV_NOPTS_VALUE;
         return 0;
     }
 
+#if FF_API_PKT_PTS
+FF_DISABLE_DEPRECATION_WARNINGS
     frame->pkt_pts = pkt->pts;
+FF_ENABLE_DEPRECATION_WARNINGS
+#endif
+    frame->pts     = pkt->pts;
 
     for (i = 0; i < FF_ARRAY_ELEMS(sd); i++) {
         int size;
@@ -793,6 +806,8 @@ int ff_get_format(AVCodecContext *avctx, const enum AVPixelFormat *fmt)
         av_freep(&avctx->internal->hwaccel_priv_data);
         avctx->hwaccel = NULL;
 
+        av_buffer_unref(&avctx->hw_frames_ctx);
+
         ret = avctx->get_format(avctx, choices);
 
         desc = av_pix_fmt_desc_get(ret);
@@ -803,6 +818,16 @@ int ff_get_format(AVCodecContext *avctx, const enum AVPixelFormat *fmt)
 
         if (!(desc->flags & AV_PIX_FMT_FLAG_HWACCEL))
             break;
+
+        if (avctx->hw_frames_ctx) {
+            AVHWFramesContext *hw_frames_ctx = (AVHWFramesContext*)avctx->hw_frames_ctx->data;
+            if (hw_frames_ctx->format != ret) {
+                av_log(avctx, AV_LOG_ERROR, "Format returned from get_buffer() "
+                       "does not match the format of provided AVHWFramesContext\n");
+                ret = AV_PIX_FMT_NONE;
+                break;
+            }
+        }
 
         if (!setup_hwaccel(avctx, ret, desc->name))
             break;

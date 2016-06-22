@@ -919,21 +919,39 @@ static int get_preset_file_2(const char *preset_name, const char *codec_name, AV
     return ret;
 }
 
-static void choose_encoder(OptionsContext *o, AVFormatContext *s, OutputStream *ost)
+static int choose_encoder(OptionsContext *o, AVFormatContext *s, OutputStream *ost)
 {
+    enum AVMediaType type = ost->st->codecpar->codec_type;
     char *codec_name = NULL;
 
-    MATCH_PER_STREAM_OPT(codec_names, str, codec_name, s, ost->st);
-    if (!codec_name) {
-        ost->st->codecpar->codec_id = av_guess_codec(s->oformat, NULL, s->filename,
-                                                     NULL, ost->st->codecpar->codec_type);
-        ost->enc = avcodec_find_encoder(ost->st->codecpar->codec_id);
-    } else if (!strcmp(codec_name, "copy"))
-        ost->stream_copy = 1;
-    else {
-        ost->enc = find_codec_or_die(codec_name, ost->st->codecpar->codec_type, 1);
-        ost->st->codecpar->codec_id = ost->enc->id;
+    if (type == AVMEDIA_TYPE_VIDEO || type == AVMEDIA_TYPE_AUDIO || type == AVMEDIA_TYPE_SUBTITLE) {
+        MATCH_PER_STREAM_OPT(codec_names, str, codec_name, s, ost->st);
+        if (!codec_name) {
+            ost->st->codecpar->codec_id = av_guess_codec(s->oformat, NULL, s->filename,
+                                                         NULL, ost->st->codecpar->codec_type);
+            ost->enc = avcodec_find_encoder(ost->st->codecpar->codec_id);
+            if (!ost->enc) {
+                av_log(NULL, AV_LOG_FATAL, "Automatic encoder selection failed for "
+                       "output stream #%d:%d. Default encoder for format %s is "
+                       "probably disabled. Please choose an encoder manually.\n",
+                       ost->file_index, ost->index, s->oformat->name);
+                return AVERROR_ENCODER_NOT_FOUND;
+            }
+        } else if (!strcmp(codec_name, "copy"))
+            ost->stream_copy = 1;
+        else {
+            ost->enc = find_codec_or_die(codec_name, ost->st->codecpar->codec_type, 1);
+            ost->st->codecpar->codec_id = ost->enc->id;
+        }
+
+        ost->encoding_needed = !ost->stream_copy;
+    } else {
+        /* no encoding supported for other media types */
+        ost->stream_copy     = 1;
+        ost->encoding_needed = 0;
     }
+
+    return 0;
 }
 
 static OutputStream *new_output_stream(OptionsContext *o, AVFormatContext *oc, enum AVMediaType type)
@@ -962,7 +980,13 @@ static OutputStream *new_output_stream(OptionsContext *o, AVFormatContext *oc, e
     ost->index      = idx;
     ost->st         = st;
     st->codecpar->codec_type = type;
-    choose_encoder(o, oc, ost);
+
+    ret = choose_encoder(o, oc, ost);
+    if (ret < 0) {
+        av_log(NULL, AV_LOG_FATAL, "Error selecting an encoder for stream "
+               "%d:%d\n", ost->file_index, ost->index);
+        exit_program(1);
+    }
 
     ost->enc_ctx = avcodec_alloc_context3(ost->enc);
     if (!ost->enc_ctx) {
@@ -1469,7 +1493,7 @@ static int configure_complex_filters(void)
     int i, ret = 0;
 
     for (i = 0; i < nb_filtergraphs; i++)
-        if (!filtergraphs[i]->graph &&
+        if (!filtergraph_is_simple(filtergraphs[i]) &&
             (ret = configure_filtergraph(filtergraphs[i])) < 0)
             return ret;
     return 0;
@@ -1723,15 +1747,68 @@ loop_end:
     }
     av_dict_free(&unused_opts);
 
-    /* set the encoding/decoding_needed flags */
+    /* set the decoding_needed flags and create simple filtergraphs */
     for (i = of->ost_index; i < nb_output_streams; i++) {
         OutputStream *ost = output_streams[i];
 
-        ost->encoding_needed = !ost->stream_copy;
         if (ost->encoding_needed && ost->source_index >= 0) {
             InputStream *ist = input_streams[ost->source_index];
             ist->decoding_needed = 1;
+
+            if (ost->st->codecpar->codec_type == AVMEDIA_TYPE_VIDEO ||
+                ost->st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+                err = init_simple_filtergraph(ist, ost);
+                if (err < 0) {
+                    av_log(NULL, AV_LOG_ERROR,
+                           "Error initializing a simple filtergraph between streams "
+                           "%d:%d->%d:%d\n", ist->file_index, ost->source_index,
+                           nb_output_files - 1, ost->st->index);
+                    exit_program(1);
+                }
+            }
         }
+
+        /*
+         * We want CFR output if and only if one of those is true:
+         * 1) user specified output framerate with -r
+         * 2) user specified -vsync cfr
+         * 3) output format is CFR and the user didn't force vsync to
+         *    something else than CFR
+         *
+         * in such a case, set ost->frame_rate
+         */
+        if (ost->encoding_needed && ost->enc_ctx->codec_type == AVMEDIA_TYPE_VIDEO) {
+            int format_cfr = !(oc->oformat->flags & (AVFMT_NOTIMESTAMPS | AVFMT_VARIABLE_FPS));
+            int need_cfr = !!ost->frame_rate.num;
+
+            if (video_sync_method == VSYNC_CFR ||
+                (video_sync_method == VSYNC_AUTO && format_cfr))
+                need_cfr = 1;
+
+            if (need_cfr && !ost->frame_rate.num) {
+                InputStream *ist = ost->source_index >= 0 ? input_streams[ost->source_index] : NULL;
+
+                if (ist && ist->framerate.num)
+                    ost->frame_rate = ist->framerate;
+                else if (ist && ist->st->avg_frame_rate.num)
+                    ost->frame_rate = ist->st->avg_frame_rate;
+                else {
+                    av_log(NULL, AV_LOG_WARNING, "Constant framerate requested "
+                           "for the output stream #%d:%d, but no information "
+                           "about the input framerate is available. Falling "
+                           "back to a default value of 25fps. Use the -r option "
+                           "if you want a different framerate.\n",
+                           ost->file_index, ost->index);
+                    ost->frame_rate = (AVRational){ 25, 1 };
+                }
+            }
+
+            if (need_cfr && ost->enc->supported_framerates && !ost->force_fps) {
+                int idx = av_find_nearest_q_idx(ost->frame_rate, ost->enc->supported_framerates);
+                ost->frame_rate = ost->enc->supported_framerates[idx];
+            }
+        }
+
     }
 
     /* check filename in case of an image number is expected */
